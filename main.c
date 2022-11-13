@@ -139,6 +139,18 @@ void print_content(const char* text){
   outtextxy(content_margin, content_y, text, content_font_size);
 }
 
+/* print passed text as content of the page */
+void print_link(const char* text){
+
+  /* initialize constants */
+  int content_margin = content_margin_multiplier * width;
+  int content_y = content_y_multiplier * height;
+  HPDF_Page_SetRGBFill (page, 0, 0, 1);
+  /* output text to pdf */
+  outtextxy(content_margin, content_y, text, content_font_size);
+}
+
+/* see if content fits the width, if not then clip to nearest word and call callback printer */
 int cliptext(const char* text, float _width, int line_number, void (*callback)(const char*) ){
   int printable_index = HPDF_Page_MeasureText( page, text, _width, HPDF_TRUE, NULL);
   if(printable_index == 0){
@@ -253,6 +265,38 @@ int main(int argc, char** argv){
           (width - image_width) / 2.0, 
           (height - image_height) / 2.0, 
           image_width, image_height);
+    }
+
+    else if(linebuffer[0] == '@'){
+      /* if line is an url, create url and display */
+      HPDF_Rect rect;
+      int linelength = strlen(linebuffer) - 2;
+      int firstspace = strcspn(linebuffer, " ");
+      /*store url in buffer */
+      char url[firstspace];
+      memset(url, 0, firstspace);
+      strncpy(url, linebuffer + 1, firstspace - 1);
+      char url2[firstspace+7];
+      char *urlp = url;
+      if(memcmp(url, "http", 4)){
+        memset(url2, 0, firstspace+7);
+        strcat(url2, "http://");
+        strcat(url2, url);
+        urlp = url2;
+      }
+      /* point to text part of url in text pointer */
+      char * text = linebuffer + firstspace + 1;
+      /* output text to pdf */
+      cliptext(text, width*(1-content_margin_multiplier*2), line_number, print_link);
+      /* create hitbox for url annotation */
+      rect.left = width*content_margin_multiplier;
+      rect.right = width-rect.left;
+      rect.bottom = content_y_multiplier * height;
+      float textheight = HPDF_Font_GetCapHeight(font) * content_font_size / 1000.0;
+      rect.top = rect.bottom + textheight;
+      /* set the annotation to link to the url , no borders */
+      HPDF_Annotation annot = HPDF_Page_CreateURILinkAnnot(page, rect, urlp);
+      HPDF_LinkAnnot_SetBorderStyle (annot, 0, 0, 0);
     }
 
     else {
