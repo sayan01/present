@@ -229,6 +229,11 @@ int main(int argc, char** argv){
       memset(filename, 0, filename_length+1);
       memcpy(filename, linebuffer+1, filename_length);
       /* try to open image handle depending on image type */
+      FILE * img = fopen(filename, "r");
+      if(!img){
+        printf("Line %d: image file named %s does not exist or is not accessible. Skipping\n", line_number, filename);
+        continue;
+      }
       HPDF_Image image;
       if(strendswith(filename, ".png"))
         image = HPDF_LoadPngImageFromFile(pdf, filename);
@@ -270,7 +275,12 @@ int main(int argc, char** argv){
   }
   
   /* save the file and exit safely */
-  HPDF_SaveToFile(pdf, "test.pdf");
+  int src_filename_length = strlen(argv[1]);
+  char dest_filename[src_filename_length+5];
+  memset(dest_filename, 0, src_filename_length + 5);
+  strncpy(dest_filename, argv[1], src_filename_length);
+  strcat(dest_filename, ".pdf");
+  HPDF_SaveToFile(pdf,dest_filename);
   HPDF_Free(pdf);
 
   /* close src file */
