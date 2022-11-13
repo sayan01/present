@@ -12,6 +12,7 @@ HPDF_Page page;
 
 int width = 1920, height = 1080; // 1080p monitor
 int linebuffer_length = 100000; 
+int banner_font_size = 128;
 int title_font_size = 96;
 int content_font_size = 32;
 int page_type = 0;
@@ -19,13 +20,18 @@ int page_type = 0;
 #define TITLE 1
 #define CONTENT 2
 #define IMAGE 4
+#define BANNER 8
 
 float content_margin_multiplier = 0.2;
 float content_y_multiplier = 0.7;
+float content_y_min_multiplier = 0.2;
 float title_margin_multiplier = 0.2;
 float title_y_multiplier = 0.85;
 float image_width_multiplier = 0.5;
 float image_height_multiplier = 0.5;
+
+#define CONTENT_MARGIN_MULTIPLIER_DEFAULT 0.2
+#define CONTENT_Y_MULTIPLIER_DEFAULT 0.7
 
 
 /* helper functions */
@@ -47,6 +53,9 @@ int strendswith(const char *str, const char *suffix) {
   /* check if both buffers are same */
   return strncmp(stra + lenstr - lensuffix, suffixa, lensuffix) == 0;
 }
+
+float min(float a, float b){ return a < b ? a : b; }
+float max(float a, float b){ return a > b ? a : b; }
 
 /* error handler called by hpdf in case of errors */
 void error_handler (HPDF_STATUS error_no, HPDF_STATUS detail_no, void *user_data) {
@@ -96,16 +105,54 @@ void print_page_number(int page_number){
   sprintf(pagenumber, "%d", page_number);
   outtextxy(width - 50, 20, pagenumber, 24);
 }
+
+/* print passed text as banner of the page */
+void print_banner(const char* text){
+  centertextinpage(text, banner_font_size);
+}
+
 /* print passed text as title of the page */
 void print_title(const char* text){
+
+  /* initialize constants */
   int title_margin = title_margin_multiplier * width;
   int title_y = title_y_multiplier * height;
-  HPDF_Page_SetFontAndSize(page, font, title_font_size);
-  centertext(title_y, text + 1, title_font_size);
+
+  /* print the text to pdf */
+  centertext(title_y, text, title_font_size);
+
+  /* print horizontal line below title */
   HPDF_Page_SetLineWidth(page, 1);
   HPDF_Page_MoveTo(page, title_margin, title_y - 50);
   HPDF_Page_LineTo(page, width - title_margin, title_y - 50);
   HPDF_Page_Stroke(page);
+}
+
+/* print passed text as content of the page */
+void print_content(const char* text){
+
+  /* initialize constants */
+  int content_margin = content_margin_multiplier * width;
+  int content_y = content_y_multiplier * height;
+
+  /* output text to pdf */
+  outtextxy(content_margin, content_y, text, content_font_size);
+}
+
+int cliptext(const char* text, float _width, int line_number, void (*callback)(const char*) ){
+  int printable_index = HPDF_Page_MeasureText( page, text, _width, HPDF_TRUE, NULL);
+  if(printable_index == 0){
+    printable_index = HPDF_Page_MeasureText( page, text, _width, HPDF_FALSE, NULL);
+  }
+  char printbuffer[printable_index + 2];
+  memset(printbuffer, 0, printable_index+2);
+  memcpy(printbuffer, text, printable_index);
+  if(printbuffer[printable_index-1] == '\n') printbuffer[printable_index-1] = ' ';
+  if(printable_index)
+    callback(printbuffer);
+  if(text[printable_index])
+    printf("Line %d is too long. Trimming it at closest word at column %d\n", line_number, printable_index);
+  return text[printable_index];
 }
 
 int main(int argc, char** argv){
@@ -134,7 +181,9 @@ int main(int argc, char** argv){
   }
 
   /* set default font to be Helvetica */
-  font = HPDF_GetFont(pdf, "Helvetica", NULL);
+  const char* font_name = HPDF_LoadTTFontFromFile(pdf, "font.ttf", HPDF_TRUE);
+  font = HPDF_GetFont(pdf, font_name, NULL);
+  //font = HPDF_GetFont(pdf, "Helvetica", NULL);
 
   
   /* iterate over lines of src and generate pages of pdf */
@@ -149,38 +198,52 @@ int main(int argc, char** argv){
     HPDF_Page_SetFontAndSize(page, font, content_font_size);
     /* if a newline is present, move to new page in pdf */
     if(linebuffer[0] == '\n'){
-      content_y_multiplier = 0.7;
+      content_y_multiplier = CONTENT_Y_MULTIPLIER_DEFAULT;
+      content_margin_multiplier = CONTENT_MARGIN_MULTIPLIER_DEFAULT;
       newpage();
       print_page_number(++page_number);
       page_type = 0;
       continue;
     }
 
+    else if (linebuffer[0] == '$'){
+      page_type |= BANNER;
+      cliptext(linebuffer + 1, width, line_number, print_banner);
+    }
+
     else if (linebuffer[0] == '#'){
-      print_title(linebuffer);
+      /* if current slide is a banner slide, skip titles */
+      if(page_type & BANNER) continue;
       page_type |= TITLE;
+      cliptext(linebuffer + 1, width*(1 - title_margin_multiplier * 2), line_number, print_title);
     }
 
     else if(linebuffer[0] == '!'){
+      /* if current slide is a banner slide, skip images */
+      if(page_type & BANNER) continue;
       /* if image, render image on page */
       page_type |= IMAGE;
+      /* get proper filename of image in buffer */
       int filename_length = strlen(linebuffer) - 2;
       char filename[filename_length+1];
       memset(filename, 0, filename_length+1);
       memcpy(filename, linebuffer+1, filename_length);
+      /* try to open image handle depending on image type */
       HPDF_Image image;
       if(strendswith(filename, ".png"))
         image = HPDF_LoadPngImageFromFile(pdf, filename);
       else if(strendswith(filename, ".jpg") || strendswith(filename, ".jpeg"))
         image = HPDF_LoadJpegImageFromFile(pdf, filename);
       else{
-        printf("Line %d: Entered filename for image is not supported. Terminating\n", line_number);
-        exit(1);
+        printf("Line %d: Entered filename for image is not supported. Skipping\n", line_number);
+        continue;
       }
+      /* if unable to open image, inform and continue */
       if(!image){
         printf("Line %d: Error opening specified file '%s'", line_number, filename);
         continue;
       }
+      /* draw image */
       HPDF_Page_DrawImage(page, image, 
           (width - image_width) / 2.0, 
           (height - image_height) / 2.0, 
@@ -190,22 +253,18 @@ int main(int argc, char** argv){
     else {
       /* if the line is a content line then clip the line and print it */
       page_type |= CONTENT;
-      if(content_y_multiplier < 0.2){
-        printf("too much content on slide %d. Terminating\n", page_number);
-        exit(1);
+      /* if page is a banner slide, skip contents */
+      if(page_type & BANNER) continue;
+      if(page_type & IMAGE){
+        /* set content_y_multiplier to be after image */
+        content_y_multiplier = min(0.5 - (image_height_multiplier / 2) - 0.05, content_y_multiplier);
+        content_margin_multiplier = 0.5 - (image_width_multiplier / 2);
       }
-      int printable_index = HPDF_Page_MeasureText( page, linebuffer,
-          width*(1 - content_margin_multiplier * 2), HPDF_TRUE, NULL);
-      if(printable_index == 0){
-        printable_index = HPDF_Page_MeasureText( page, linebuffer, 
-            width*(1-content_margin_multiplier * 2), HPDF_FALSE, NULL);
+      if(content_y_multiplier < content_y_min_multiplier){
+        printf("Line %d: too much content on slide %d. Skipping\n", line_number, page_number);
+        continue;
       }
-      char printbuffer[printable_index + 2];
-      memset(printbuffer, 0, printable_index+2);
-      memcpy(printbuffer, linebuffer, printable_index);
-      outtextxy(width * content_margin_multiplier, height * content_y_multiplier, printbuffer, content_font_size);
-      if(linebuffer[printable_index])
-        printf("Line %d is too long. Trimming it at closest word at column %d\n", line_number, printable_index);
+      cliptext(linebuffer, width*(1-content_margin_multiplier * 2), line_number, print_content);
       content_y_multiplier -= 0.05;
     }
   }

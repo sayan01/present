@@ -40,6 +40,7 @@ Things which may be required sometimes:
 
 ## Syntax
 
+- A banner page (big title only) is marked by a '$' at the begining of a line. Any other component of that slide is ignored
 - A title is marked by a '#' symbol at begining of a line
 - An image is marked by a '!' symbol at the begining of the line
 - A link is marked by a '@' symbol at the begining of the line
@@ -58,7 +59,7 @@ Lists and Links are part of content itself, and thus are only present at the end
 
 ## Example
 ```
-#Presentation on Seasons
+$Presentation on Seasons
 
 #What are seasons?
 They are abstractions of long time-frame weather commonalities which repeat each
@@ -74,7 +75,7 @@ four or five depending on the part of the world you ask the question in.
 -Spring
 -Monsoon
 
-#How they look?
+$How they look?
 
 #Summer
 !summer.png
