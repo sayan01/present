@@ -193,9 +193,16 @@ int main(int argc, char** argv){
   }
 
   /* set default font to be Helvetica */
-  const char* font_name = HPDF_LoadTTFontFromFile(pdf, "font.ttf", HPDF_TRUE);
-  font = HPDF_GetFont(pdf, font_name, NULL);
-  //font = HPDF_GetFont(pdf, "Helvetica", NULL);
+  FILE* fontfile;
+  if((fontfile = fopen("font.ttf", "r"))){
+    const char* font_name = HPDF_LoadTTFontFromFile(pdf, "font.ttf", HPDF_TRUE);
+    font = HPDF_GetFont(pdf, font_name, NULL);
+    fclose(fontfile);
+  }
+  else{
+    font = HPDF_GetFont(pdf, "Helvetica", NULL);
+    printf("font.ttf not present, using default\n");
+  }
 
   
   /* iterate over lines of src and generate pages of pdf */
@@ -246,6 +253,7 @@ int main(int argc, char** argv){
         printf("Line %d: image file named %s does not exist or is not accessible. Skipping\n", line_number, filename);
         continue;
       }
+      fclose(img);
       HPDF_Image image;
       if(strendswith(filename, ".png"))
         image = HPDF_LoadPngImageFromFile(pdf, filename);
@@ -268,6 +276,17 @@ int main(int argc, char** argv){
     }
 
     else if(linebuffer[0] == '@'){
+      page_type |= CONTENT;
+      if(page_type & BANNER) continue;
+      if(page_type & IMAGE){
+        /* set content_y_multiplier to be after image */
+        content_y_multiplier = min(0.5 - (image_height_multiplier / 2) - 0.05, content_y_multiplier);
+        content_margin_multiplier = 0.5 - (image_width_multiplier / 2);
+      }
+      if(content_y_multiplier < content_y_min_multiplier){
+        printf("Line %d: too much content on slide %d. Skipping\n", line_number, page_number);
+        continue;
+      }
       /* if line is an url, create url and display */
       HPDF_Rect rect;
       int linelength = strlen(linebuffer) - 2;
@@ -297,6 +316,27 @@ int main(int argc, char** argv){
       /* set the annotation to link to the url , no borders */
       HPDF_Annotation annot = HPDF_Page_CreateURILinkAnnot(page, rect, urlp);
       HPDF_LinkAnnot_SetBorderStyle (annot, 0, 0, 0);
+      content_y_multiplier -= 0.05;
+    }
+
+    else if(linebuffer[0] == '-'){
+      page_type |= CONTENT;
+      if(page_type & BANNER) continue;
+      if(page_type & IMAGE){
+        /* set content_y_multiplier to be after image */
+        content_y_multiplier = min(0.5 - (image_height_multiplier / 2) - 0.05, content_y_multiplier);
+        content_margin_multiplier = 0.5 - (image_width_multiplier / 2) + 0.05;
+      }
+      else {
+        content_margin_multiplier = CONTENT_MARGIN_MULTIPLIER_DEFAULT + 0.05;
+      }
+      if(content_y_multiplier < content_y_min_multiplier){
+        printf("Line %d: too much content on slide %d. Skipping\n", line_number, page_number);
+        continue;
+      }
+      cliptext(linebuffer, width*(1-content_margin_multiplier * 2), line_number, print_content);
+      content_y_multiplier -= 0.05;
+      content_margin_multiplier = CONTENT_MARGIN_MULTIPLIER_DEFAULT;
     }
 
     else {

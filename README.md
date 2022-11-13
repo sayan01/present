@@ -106,4 +106,16 @@ reach me out on:
 @blog.sayn.work My Blog
 ```
 
+To run the program on an example file go to the example/ folder and execute the program on the given source.pre file
+```
+present source.pre
+```
+and an output file of `source.pre.pdf` will be generated. Open it through any pdf viewer and the slides will be visible.
 
+For the above snippet of code to work `present` has to be compiled and the binary has to be in $PATH. otherwise you can refer to it using its path.
+
+```
+../bin/present source.pre
+```
+
+present expects the presence of a `font.ttf` file which is to be used for the presentation. In the example folder a symlink to the poppins-regular is provided. feel free to change it to any font you like

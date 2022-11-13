@@ -1,2 +1,2 @@
 #!/bin/bash
-gcc main.c -o bin/main -lhpdf && ./bin/main $@
+gcc main.c -o bin/present -lhpdf && ./bin/present $@
