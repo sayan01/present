@@ -1,0 +1,2 @@
+#!/bin/bash
+gcc main.c -o bin/main -lhpdf && ./bin/main $@

@@ -1,1 +1,3 @@
 #gitignore file
+test*
+bin/
