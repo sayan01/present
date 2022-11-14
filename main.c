@@ -148,6 +148,8 @@ void print_link(const char* text){
   HPDF_Page_SetRGBFill (page, 0, 0, 1);
   /* output text to pdf */
   outtextxy(content_margin, content_y, text, content_font_size);
+  /* reset text color */
+  HPDF_Page_SetRGBFill (page, 0, 0, 0);
 }
 
 /* see if content fits the width, if not then clip to nearest word and call callback printer */
