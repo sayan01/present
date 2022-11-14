@@ -278,8 +278,8 @@ int main(int argc, char** argv){
     }
 
     else if(linebuffer[0] == '@'){
-      page_type |= CONTENT;
       if(page_type & BANNER) continue;
+      page_type |= CONTENT;
       if(page_type & IMAGE){
         /* set content_y_multiplier to be after image */
         content_y_multiplier = min(0.5 - (image_height_multiplier / 2) - 0.05, content_y_multiplier);
@@ -322,8 +322,8 @@ int main(int argc, char** argv){
     }
 
     else if(linebuffer[0] == '-'){
-      page_type |= CONTENT;
       if(page_type & BANNER) continue;
+      page_type |= CONTENT;
       if(page_type & IMAGE){
         /* set content_y_multiplier to be after image */
         content_y_multiplier = min(0.5 - (image_height_multiplier / 2) - 0.05, content_y_multiplier);
@@ -342,10 +342,10 @@ int main(int argc, char** argv){
     }
 
     else {
-      /* if the line is a content line then clip the line and print it */
-      page_type |= CONTENT;
       /* if page is a banner slide, skip contents */
       if(page_type & BANNER) continue;
+      /* if the line is a content line then clip the line and print it */
+      page_type |= CONTENT;
       if(page_type & IMAGE){
         /* set content_y_multiplier to be after image */
         content_y_multiplier = min(0.5 - (image_height_multiplier / 2) - 0.05, content_y_multiplier);
