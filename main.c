@@ -11,7 +11,7 @@ HPDF_Font font;
 HPDF_Page page;
 
 int width = 1920, height = 1080; // 1080p monitor
-int linebuffer_length = 100000; 
+int linebuffer_length = 100000;
 int banner_font_size = 128;
 int title_font_size = 96;
 int content_font_size = 32;
@@ -65,7 +65,7 @@ void error_handler (HPDF_STATUS error_no, HPDF_STATUS detail_no, void *user_data
 
 /* print provided text at provided X-Y coordinates, with the given font size
  * coordinate plane starts from bottom left.
- * 
+ *
  * Y
  * ^
  * |        (4,8)
@@ -139,6 +139,11 @@ void print_content(const char* text){
   outtextxy(content_margin, content_y, text, content_font_size);
 }
 
+/* print banner content using content font size but centered */
+void print_banner_content(const char* text){
+  centertext(content_y_multiplier * height, text, content_font_size);
+}
+
 /* print passed text as content of the page */
 void print_link(const char* text){
 
@@ -206,7 +211,7 @@ int main(int argc, char** argv){
     printf("font.ttf not present, using default\n");
   }
 
-  
+
   /* iterate over lines of src and generate pages of pdf */
   char linebuffer[linebuffer_length];
   int page_number = 1, line_number = 0;
@@ -230,6 +235,7 @@ int main(int argc, char** argv){
     else if (linebuffer[0] == '$'){
       page_type |= BANNER;
       cliptext(linebuffer + 1, width, line_number, print_banner);
+      content_y_multiplier -= 0.3;
     }
 
     else if (linebuffer[0] == '#'){
@@ -271,9 +277,9 @@ int main(int argc, char** argv){
         continue;
       }
       /* draw image */
-      HPDF_Page_DrawImage(page, image, 
-          (width - image_width) / 2.0, 
-          (height - image_height) / 2.0, 
+      HPDF_Page_DrawImage(page, image,
+          (width - image_width) / 2.0,
+          (height - image_height) / 2.0,
           image_width, image_height);
     }
 
@@ -322,6 +328,7 @@ int main(int argc, char** argv){
     }
 
     else if(linebuffer[0] == '-'){
+      /* if current slide is a banner slide, skip content */
       if(page_type & BANNER) continue;
       page_type |= CONTENT;
       if(page_type & IMAGE){
@@ -342,8 +349,6 @@ int main(int argc, char** argv){
     }
 
     else {
-      /* if page is a banner slide, skip contents */
-      if(page_type & BANNER) continue;
       /* if the line is a content line then clip the line and print it */
       page_type |= CONTENT;
       if(page_type & IMAGE){
@@ -355,11 +360,15 @@ int main(int argc, char** argv){
         printf("Line %d: too much content on slide %d. Skipping\n", line_number, page_number);
         continue;
       }
-      cliptext(linebuffer, width*(1-content_margin_multiplier * 2), line_number, print_content);
+      if(page_type & BANNER) {
+        cliptext(linebuffer, width*(1-content_margin_multiplier * 2), line_number, print_banner_content);
+      } else {
+        cliptext(linebuffer, width*(1-content_margin_multiplier * 2), line_number, print_content);
+      }
       content_y_multiplier -= 0.05;
     }
   }
-  
+
   /* save the file and exit safely */
   int src_filename_length = strlen(argv[1]);
   char dest_filename[src_filename_length+5];
