@@ -83,7 +83,7 @@ $How they look?
 #Winter
 !winter.png
 
-#Autumn
+#Fall
 !autumn.png
 
 #Spring
