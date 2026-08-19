@@ -102,8 +102,8 @@ questions?
 
 thanks!
 reach me out on:
-@sayn.work sayn.work
-@blog.sayn.work My Blog
+@sayan-ghosh.com sayan-ghosh.com
+@https://www.youtube.com/@sayang2001 My Youtube
 ```
 
 To run the program on an example file go to the example/ folder and execute the program on the given source.pre file
@@ -118,4 +118,4 @@ For the above snippet of code to work `present` has to be compiled and the binar
 ../bin/present source.pre
 ```
 
-present expects the presence of a `font.ttf` file which is to be used for the presentation. In the example folder a symlink to the poppins-regular is provided. feel free to change it to any font you like
+present expects the presence of a `font.ttf` file which is to be used for the presentation. In the example folder a symlink to the poppins-regular is provided. feel free to change it to any font you like. If absent, default font will be used.
